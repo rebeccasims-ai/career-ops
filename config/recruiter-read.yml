@@ -1,0 +1,43 @@
+# config/recruiter-read.yml — knobs for recruiter-read-check.mjs (user layer; edit freely).
+# Declared in config/local-paths.txt so update-system.mjs never overwrites it.
+
+# JD-title function words → synonyms that count as "the CV says this function".
+# The check passes when at least one detected function has a synonym in the
+# headline or the summary's first sentence; the others become warnings.
+functions:
+  marketing operations: [marketing operations, marketing ops, mops, martech, marketing technology, marketing systems, marketing infrastructure, operations]
+  lifecycle: [lifecycle, customer lifecycle, retention, crm]
+  growth: [growth marketing, growth]
+  demand generation: [demand gen, demand generation, revenue marketing, pipeline marketing]
+  gtm: [gtm, go-to-market, revenue operations, revops, gtm systems]
+  analytics: [analytics, insights, measurement]
+  paid: [paid media, performance marketing, paid performance]
+  strategy: [marketing strategy, strategy]
+  product marketing: [product marketing, pmm]
+
+# Title words → level. Longest key wins, whole-word match. "Head of" is judged as
+# Director altitude (see modes/_profile.md, Title Ceiling by Company Size).
+levels:
+  manager: 1
+  senior manager: 2
+  sr. manager: 2
+  sr manager: 2
+  director: 3
+  head of: 3
+  senior director: 4
+  sr. director: 4
+  sr director: 4
+  vp: 5
+  vice president: 5
+  svp: 6
+  cmo: 6
+
+# Terms a non-technical recruiter cannot parse. Counted in the summary and the
+# first role's bullets; the Skills block is exempt; a term the JD itself uses is lifted.
+jargon: [MCP, Claude, Netlify, serverless, n8n, Profound, GEO, MMP, Braze, Notion, Asana, Figma]
+
+thresholds:
+  min_scale_categories: 2      # of budget / size / team / reporting line, in summary + first-role intro + first bullet
+  max_summary_jargon: 1        # more distinct unlifted jargon terms than this in the summary = fail
+  level_warning_distance: 2    # JD level minus highest multi-year level; >= this warns
+  multi_year_months: 18        # a title counts as "held" at this many months (Lifesize Director = 19)
