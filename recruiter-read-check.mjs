@@ -13,7 +13,8 @@
  *
  * Exit: 0 pass (warnings allowed) · 1 fail · 2 usage / unreadable input
  *
- * User-layer file, declared in config/local-paths.txt. Not part of upstream career-ops.
+ * Config: config/recruiter-read.yml (user layer, gitignored) when present, otherwise the
+ * shipped config/recruiter-read.example.yml. Not part of upstream career-ops.
  */
 import { existsSync, readFileSync } from 'fs';
 import { dirname, isAbsolute, join } from 'path';
@@ -23,10 +24,13 @@ import { isMainModule } from './lib/is-main-module.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-// DEFAULT_CONFIG_PATH stays on the codebase ROOT: config/recruiter-read.yml is a
-// repo-relative declaration in config/local-paths.txt, not user data. DEFAULT_CV_PATH
-// is user-layer data (per the Data Contract) and must resolve from the data root.
-export const DEFAULT_CONFIG_PATH = join(ROOT, 'config', 'recruiter-read.yml');
+// DEFAULT_CONFIG_PATH stays on the codebase ROOT: the user's config/recruiter-read.yml
+// (gitignored) wins when it exists; the shipped .example.yml is the fallback so a fresh
+// clone works out of the box. DEFAULT_CV_PATH is user-layer data (per the Data
+// Contract) and must resolve from the data root.
+const USER_CONFIG_PATH = join(ROOT, 'config', 'recruiter-read.yml');
+export const EXAMPLE_CONFIG_PATH = join(ROOT, 'config', 'recruiter-read.example.yml');
+export const DEFAULT_CONFIG_PATH = existsSync(USER_CONFIG_PATH) ? USER_CONFIG_PATH : EXAMPLE_CONFIG_PATH;
 export const DEFAULT_CV_PATH = join(getCareerOpsRoot(), 'cv.md');
 
 // ── HTML → text ─────────────────────────────────────────────────────────────
@@ -186,7 +190,7 @@ export function buildTestHtml({
   company = 'Acme',
   dates = 'Jan 2024 - Present',
   bullets = [],
-  skills = 'AI & Automation: MCP, Netlify',
+  skills = 'AI & Automation: MCP, Kubernetes',
 } = {}) {
   const lis = bullets.map((b) => `<li>${b}</li>`).join('\n');
   return `<html><body><div class="page">
@@ -252,7 +256,7 @@ export function checkScale(regions, config) {
   return { status: categories.length >= required ? 'pass' : 'fail', categories, required };
 }
 
-/** Drop URLs and bare domains so a portfolio link like becca-bot.netlify.app never reads as jargon. */
+/** Drop URLs and bare domains so a portfolio link like jane-doe.example.com never reads as jargon. */
 export function scrubUrls(text) {
   return String(text)
     .replace(/\bhttps?:\/\/\S+/gi, ' ')
@@ -346,7 +350,7 @@ export function runSelfTest() {
   check('off-function title fails', !r2.pass && r2.fails[0].startsWith('Function:'));
   const r3 = analyze(buildTestHtml({ summary: 'Marketing operations leader who loves systems.', bullets: ['Improved processes.'] }), { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
   check('no scale signals fails', !r3.pass && r3.fails[0].startsWith('Scale:'));
-  const r4 = analyze(buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Netlify with a $20M budget, reporting to the CMO.' }), { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
+  const r4 = analyze(buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Kubernetes with a $20M budget, reporting to the CMO.' }), { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
   check('two unlifted jargon terms in the summary fails', !r4.pass && r4.fails[0].startsWith('Jargon:'));
   const r5 = analyze(good, { jdTitle: 'VP Marketing Operations', cvText: cv, config });
   check('two-level jump warns but passes', r5.pass && r5.warnings.some((w) => w.startsWith('Level:')));

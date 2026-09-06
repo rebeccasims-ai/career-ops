@@ -12,13 +12,13 @@ const html = buildTestHtml({
   company: 'Acme',
   dates: 'Jan 2024 - Present',
   bullets: ['Built the function, reporting to the CMO.', 'Second bullet with MCP.'],
-  skills: 'AI: MCP, Netlify',
+  skills: 'AI: MCP, Kubernetes',
 });
 const r = extractRegions(html);
 if (r.summary === 'Marketing operations leader. Second sentence.') pass('extractRegions reads the summary'); else fail(`summary was ${JSON.stringify(r.summary)}`);
 if (r.firstRole.role === 'Director of Marketing Operations' && r.firstRole.company === 'Acme') pass('extractRegions reads the first role and company'); else fail(`firstRole was ${JSON.stringify(r.firstRole)}`);
 if (r.firstRole.bullets.length === 2 && r.firstRole.bullets[0] === 'Built the function, reporting to the CMO.') pass('extractRegions reads first-role bullets'); else fail(`bullets were ${JSON.stringify(r.firstRole.bullets)}`);
-if (r.skills.includes('Netlify')) pass('extractRegions reads the skills block'); else fail(`skills was ${JSON.stringify(r.skills)}`);
+if (r.skills.includes('Kubernetes')) pass('extractRegions reads the skills block'); else fail(`skills was ${JSON.stringify(r.skills)}`);
 if (r.headline === '') pass('extractRegions yields an empty headline for the template (no headline slot)'); else fail(`headline was ${JSON.stringify(r.headline)}`);
 
 const levels = { manager: 1, 'senior manager': 2, director: 3, 'head of': 3, 'senior director': 4, vp: 5, 'vice president': 5, svp: 6 };
@@ -29,9 +29,9 @@ if (parseDurationMonths('garbage') === null) pass('parseDurationMonths: unparsea
 if (parseDurationMonths('Jun 2019 – May 2019') === null) pass('parseDurationMonths: end before start → null'); else fail(`got ${parseDurationMonths('Jun 2019 – May 2019')}`);
 
 const cv = [
-  '# Test', '', '### Head of Marketing Operations · Acme · Austin, TX · Jan 2026 – Present',
-  '### Senior Manager, Lifecycle · Beta · Austin, TX · Mar 2020 – Jan 2026',
-  '### Director, Growth Marketing · Gamma · Austin, TX · Aug 2018 – Mar 2020',
+  '# Test', '', '### Head of Marketing Operations · Acme · Remote · Jan 2026 – Present',
+  '### Senior Manager, Lifecycle · Beta · Remote · Mar 2020 – Jan 2026',
+  '### Director, Growth Marketing · Gamma · Remote · Aug 2018 – Mar 2020',
   '### Head of Marketing · Delta · Houston, TX · Jul 2017 – Aug 2018',
 ].join('\n');
 const roles = parseCvRoles(cv);
@@ -46,16 +46,16 @@ const best = highestMultiYearLevel(cv, levels, 18);
 if (best && best.level === 3 && best.title === 'Director, Growth Marketing') pass('highestMultiYearLevel: 19-month Director outranks 70-month Senior Manager; 8-month Head of excluded'); else fail(`best was ${JSON.stringify(best)}`);
 
 const cfg = loadConfig();
-if (cfg.functions['marketing operations'] && cfg.levels.vp === 5 && Array.isArray(cfg.jargon) && cfg.thresholds.min_scale_categories === 2) pass('loadConfig reads config/recruiter-read.yml'); else fail(`config was ${JSON.stringify(cfg)}`);
+if (cfg.functions['marketing operations'] && cfg.levels.vp === 5 && Array.isArray(cfg.jargon) && cfg.thresholds.min_scale_categories === 2) pass('loadConfig reads the default config (user file or shipped example)'); else fail(`config was ${JSON.stringify(cfg)}`);
 import { analyze, checkFunction, checkScale, checkJargon, checkLevel, firstSentence, firstNonEmptyLine, containsTerm } from '../recruiter-read-check.mjs';
 
 console.log('\nrecruiter-read-check.mjs — the four checks');
 
 const CFG = loadConfig();
 const CV = [
-  '### Head of Marketing Operations · Acme · Austin, TX · Jan 2026 – Present',
-  '### Senior Manager, Lifecycle · Beta · Austin, TX · Mar 2020 – Jan 2026',
-  '### Director, Growth Marketing · Gamma · Austin, TX · Aug 2018 – Mar 2020',
+  '### Head of Marketing Operations · Acme · Remote · Jan 2026 – Present',
+  '### Senior Manager, Lifecycle · Beta · Remote · Mar 2020 – Jan 2026',
+  '### Director, Growth Marketing · Gamma · Remote · Aug 2018 – Mar 2020',
 ].join('\n');
 const GOOD_SUMMARY = 'Marketing operations leader with 12 years running a marketing org of 60 people and a $20M budget, reporting to the CMO. Second sentence.';
 const good = buildTestHtml({ summary: GOOD_SUMMARY, role: 'Director of Marketing Operations', bullets: ['Built the function from zero; multiple direct reports, and hiring.', 'Second bullet.'] });
@@ -94,15 +94,15 @@ if (dollarBudget.categories.includes('budget')) pass('checkScale: "$20M budget" 
 const spendBudget = checkScale(extractRegions(buildTestHtml({ summary: 'Marketing operations leader who managed 25 million in paid spend, reporting to the CMO.', bullets: ['Grew the team.'] })), CFG);
 if (spendBudget.categories.includes('budget')) pass('checkScale: "25 million in paid spend" is budget'); else fail(`categories were ${JSON.stringify(spendBudget.categories)}`);
 
-const jargony = buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Netlify with a $20M budget, reporting to the CMO.', bullets: ['Shipped apps on Claude.'] });
+const jargony = buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Kubernetes with a $20M budget, reporting to the CMO.', bullets: ['Shipped ETL apps.'] });
 const jg = checkJargon(extractRegions(jargony), '', CFG);
-if (jg.status === 'fail' && jg.summary.includes('MCP') && jg.summary.includes('Netlify') && jg.bullets.includes('Claude')) pass('checkJargon: two unlifted terms in the summary → fail; bullet term listed'); else fail(`checkJargon gave ${JSON.stringify(jg)}`);
-const lifted = checkJargon(extractRegions(jargony), 'We run MCP servers on Netlify and Claude.', CFG);
+if (jg.status === 'fail' && jg.summary.includes('MCP') && jg.summary.includes('Kubernetes') && jg.bullets.includes('ETL')) pass('checkJargon: two unlifted terms in the summary → fail; bullet term listed'); else fail(`checkJargon gave ${JSON.stringify(jg)}`);
+const lifted = checkJargon(extractRegions(jargony), 'We run MCP servers on Kubernetes with ETL.', CFG);
 if (lifted.status === 'pass' && lifted.lifted.length === 3) pass('checkJargon: terms the JD uses are lifted'); else fail(`lifted gave ${JSON.stringify(lifted)}`);
-const skillsOnly = buildTestHtml({ summary: GOOD_SUMMARY, bullets: ['Plain bullet.'], skills: 'MCP, Netlify, Claude, n8n' });
+const skillsOnly = buildTestHtml({ summary: GOOD_SUMMARY, bullets: ['Plain bullet.'], skills: 'MCP, Kubernetes, ETL, CDP' });
 if (checkJargon(extractRegions(skillsOnly), '', CFG).status === 'pass') pass('checkJargon: the Skills block is exempt'); else fail('skills block should be exempt');
 
-const urlOnly = buildTestHtml({ summary: 'Marketing operations leader with a $20M budget, reporting to the CMO. Portfolio: becca-bot.netlify.app.', bullets: ['See https://example.netlify.app/notion for details.'] });
+const urlOnly = buildTestHtml({ summary: 'Marketing operations leader with a $20M budget, reporting to the CMO. Portfolio: jane-doe.kubernetes.dev.', bullets: ['See https://example.kubernetes.dev/etl for details.'] });
 const urlRes = checkJargon(extractRegions(urlOnly), '', CFG);
 if (urlRes.status === 'pass' && urlRes.summary.length === 0 && urlRes.bullets.length === 0) pass('checkJargon: terms inside URLs and domains are not jargon'); else fail(`checkJargon URL scrub gave ${JSON.stringify(urlRes)}`);
 

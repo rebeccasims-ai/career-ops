@@ -57,6 +57,8 @@ writing-samples/*
 # User config and customization (never auto-updated)
 config/profile.yml
 config/cv-facts.json
+# recruiter-read-check.mjs knobs — copy config/recruiter-read.example.yml here and edit
+config/recruiter-read.yml
 config/benchmarks.yml
 # Fork-local path declarations — this checkout's own files, read by
 # update-system.mjs. Gitignored on purpose: it describes THIS clone, not the

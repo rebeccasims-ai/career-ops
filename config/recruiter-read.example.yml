@@ -1,5 +1,6 @@
-# config/recruiter-read.yml — knobs for recruiter-read-check.mjs (user layer; edit freely).
-# Declared in config/local-paths.txt so update-system.mjs never overwrites it.
+# config/recruiter-read.example.yml — template for recruiter-read-check.mjs.
+# Copy to config/recruiter-read.yml (gitignored, user layer) and edit freely; the
+# checker uses config/recruiter-read.yml when it exists and this file otherwise.
 
 # JD-title function words → synonyms that count as "the CV says this function".
 # The check passes when at least one detected function has a synonym in the
@@ -36,10 +37,11 @@ levels:
 
 # Terms a non-technical recruiter cannot parse. Counted in the summary and the
 # first role's bullets; the Skills block is exempt; a term the JD itself uses is lifted.
-jargon: [MCP, Claude, Netlify, serverless, n8n, Profound, GEO, MMP, Braze, Notion, Asana, Figma]
+# Replace with the vendor names, acronyms and internal tool names your own CV leans on.
+jargon: [MCP, LLM, serverless, ETL, CDP, MMP, GEO, SDK, API-first, Kubernetes]
 
 thresholds:
   min_scale_categories: 2      # of budget / size / team / reporting line, in summary + first-role intro + first bullet
   max_summary_jargon: 1        # more distinct unlifted jargon terms than this in the summary = fail
   level_warning_distance: 2    # JD level minus highest multi-year level; >= this warns
-  multi_year_months: 18        # a title counts as "held" at this many months (Lifesize Director = 19)
+  multi_year_months: 18        # a title counts as "held" at this many months (e.g. a 19-month Director counts, an 8-month Head of does not)
