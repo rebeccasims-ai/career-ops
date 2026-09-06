@@ -5,7 +5,7 @@
 # The check passes when at least one detected function has a synonym in the
 # headline or the summary's first sentence; the others become warnings.
 functions:
-  marketing operations: [marketing operations, marketing ops, mops, martech, marketing technology, marketing systems, marketing infrastructure, operations]
+  marketing operations: [marketing operations, marketing ops, mops, martech, marketing technology, marketing systems, marketing infrastructure, strategy and operations, marketing strategy and operations, strategy & operations]
   lifecycle: [lifecycle, customer lifecycle, retention, crm]
   growth: [growth marketing, growth]
   demand generation: [demand gen, demand generation, revenue marketing, pipeline marketing]
@@ -14,8 +14,10 @@ functions:
   paid: [paid media, performance marketing, paid performance]
   strategy: [marketing strategy, strategy]
   product marketing: [product marketing, pmm]
+  sales operations: [sales operations, sales ops]
 
-# Title words → level. Longest key wins, whole-word match. "Head of" is judged as
+# Title words → level. Highest matching key wins, whole-word match (e.g. "VP,
+# Head of Growth" is VP altitude, not Head-of altitude). "Head of" is judged as
 # Director altitude (see modes/_profile.md, Title Ceiling by Company Size).
 levels:
   manager: 1

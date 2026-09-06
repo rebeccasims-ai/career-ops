@@ -26,6 +26,7 @@ if (parseDurationMonths('Aug 2018 – Mar 2020') === 19) pass('parseDurationMont
 if (parseDurationMonths('2016 – 2017') === 23) pass('parseDurationMonths: year-only 2016 – 2017 = 23'); else fail(`got ${parseDurationMonths('2016 – 2017')}`);
 if (parseDurationMonths('Jan 2026 – Present', new Date(2026, 8, 1)) === 8) pass('parseDurationMonths: Present resolves to now'); else fail(`got ${parseDurationMonths('Jan 2026 – Present', new Date(2026, 8, 1))}`);
 if (parseDurationMonths('garbage') === null) pass('parseDurationMonths: unparseable → null'); else fail('expected null');
+if (parseDurationMonths('Jun 2019 – May 2019') === null) pass('parseDurationMonths: end before start → null'); else fail(`got ${parseDurationMonths('Jun 2019 – May 2019')}`);
 
 const cv = [
   '# Test', '', '### Head of Marketing Operations · Acme · Austin, TX · Jan 2026 – Present',
@@ -40,12 +41,13 @@ if (levelOf('Senior Director, Global Revenue Marketing', levels)?.level === 4) p
 if (levelOf('SVP Marketing', levels)?.level === 6) pass('levelOf: SVP does not match vp inside the word'); else fail('SVP should be 6');
 if (levelOf('Head of Demand Generation', levels)?.level === 3) pass('levelOf: Head of → 3'); else fail('Head of should be 3');
 if (levelOf('Marketing Wizard', levels) === null) pass('levelOf: no level word → null'); else fail('expected null');
+if (levelOf('VP, Head of Growth', levels)?.level === 5) pass('levelOf: highest level among matches wins (VP over Head of)'); else fail(`got ${JSON.stringify(levelOf('VP, Head of Growth', levels))}`);
 const best = highestMultiYearLevel(cv, levels, 18);
 if (best && best.level === 3 && best.title === 'Director, Growth Marketing') pass('highestMultiYearLevel: 19-month Director outranks 70-month Senior Manager; 8-month Head of excluded'); else fail(`best was ${JSON.stringify(best)}`);
 
 const cfg = loadConfig();
 if (cfg.functions['marketing operations'] && cfg.levels.vp === 5 && Array.isArray(cfg.jargon) && cfg.thresholds.min_scale_categories === 2) pass('loadConfig reads config/recruiter-read.yml'); else fail(`config was ${JSON.stringify(cfg)}`);
-import { analyze, checkFunction, checkScale, checkJargon, checkLevel, firstSentence, firstNonEmptyLine } from '../recruiter-read-check.mjs';
+import { analyze, checkFunction, checkScale, checkJargon, checkLevel, firstSentence, firstNonEmptyLine, containsTerm } from '../recruiter-read-check.mjs';
 
 console.log('\nrecruiter-read-check.mjs — the four checks');
 
@@ -60,6 +62,8 @@ const good = buildTestHtml({ summary: GOOD_SUMMARY, role: 'Director of Marketing
 
 if (firstSentence(GOOD_SUMMARY) === 'Marketing operations leader with 12 years running a marketing org of 60 people and a $20M budget, reporting to the CMO.') pass('firstSentence stops at the first period'); else fail(`firstSentence gave ${JSON.stringify(firstSentence(GOOD_SUMMARY))}`);
 if (firstNonEmptyLine('\n\n# **Director of Marketing Operations**\nbody') === 'Director of Marketing Operations') pass('firstNonEmptyLine strips heading marks and bold'); else fail('firstNonEmptyLine');
+const ABBREV_SUMMARY = 'Leader at Acme Inc. driving marketing operations for 17 years. Next.';
+if (firstSentence(ABBREV_SUMMARY) === 'Leader at Acme Inc. driving marketing operations for 17 years.') pass('firstSentence does not split on an abbreviation period'); else fail(`firstSentence gave ${JSON.stringify(firstSentence(ABBREV_SUMMARY))}`);
 
 const okAll = analyze(good, { jdTitle: 'Director of Marketing Operations', cvText: CV, config: CFG });
 if (okAll.pass && okAll.fails.length === 0) pass('analyze: on-function, scaled, plain-language CV passes'); else fail(`expected pass, got ${JSON.stringify(okAll.fails)}`);
@@ -70,12 +74,25 @@ if (fn.status === 'fail' && fn.detected.includes('demand generation')) pass('che
 const fnWarn = checkFunction(extractRegions(good), 'VP Marketing Strategy and Operations', CFG);
 if (fnWarn.status === 'warning' && fnWarn.present.includes('marketing operations') && fnWarn.missing.includes('strategy')) pass('checkFunction: one function present, one missing → warning'); else fail(`checkFunction gave ${JSON.stringify(fnWarn)}`);
 if (checkFunction(extractRegions(good), '', CFG).status === 'skipped') pass('checkFunction: no title → skipped'); else fail('checkFunction should skip without a title');
+const fnSalesOps = checkFunction(extractRegions(good), 'Director of Sales Operations', CFG);
+if (fnSalesOps.status === 'fail') pass('checkFunction: sales-ops title vs ops summary fails (bare "operations" no longer matches marketing operations)'); else fail(`checkFunction gave ${JSON.stringify(fnSalesOps)}`);
+const fnRevOps = checkFunction(extractRegions(good), 'Director of Revenue Operations', CFG);
+if (fnRevOps.status === 'fail' && fnRevOps.detected.includes('gtm')) pass('checkFunction: revenue-ops title detected as gtm and fails vs ops summary'); else fail(`checkFunction gave ${JSON.stringify(fnRevOps)}`);
+const fnSkipped = checkFunction(extractRegions(good), 'Marketing Wizard', CFG);
+if (fnSkipped.status === 'skipped' && /no known function word/.test(fnSkipped.reason)) pass('checkFunction: no known function word in title → skipped'); else fail(`checkFunction gave ${JSON.stringify(fnSkipped)}`);
 
 const flat = buildTestHtml({ summary: 'Marketing operations leader who loves systems. More words.', bullets: ['Improved processes.'] });
 const sc = checkScale(extractRegions(flat), CFG);
 if (sc.status === 'fail' && sc.categories.length === 0) pass('checkScale: no scale signals → fail'); else fail(`checkScale gave ${JSON.stringify(sc)}`);
 const flatRes = analyze(flat, { jdTitle: 'Director of Marketing Operations', cvText: CV, config: CFG });
 if (!flatRes.pass && flatRes.fails.some((f) => f.startsWith('Scale:'))) pass('analyze: scale fail surfaces as a fail line'); else fail(`fails were ${JSON.stringify(flatRes.fails)}`);
+
+const noBudgetContext = checkScale(extractRegions(buildTestHtml({ summary: 'Marketing operations leader with a 2 million user base, reporting to the CMO.', bullets: ['Grew the team.'] })), CFG);
+if (!noBudgetContext.categories.includes('budget')) pass('checkScale: a bare "million" with no money context is not budget'); else fail(`categories were ${JSON.stringify(noBudgetContext.categories)}`);
+const dollarBudget = checkScale(extractRegions(buildTestHtml({ summary: 'Marketing operations leader with a $20M budget, reporting to the CMO.', bullets: ['Grew the team.'] })), CFG);
+if (dollarBudget.categories.includes('budget')) pass('checkScale: "$20M budget" is budget'); else fail(`categories were ${JSON.stringify(dollarBudget.categories)}`);
+const spendBudget = checkScale(extractRegions(buildTestHtml({ summary: 'Marketing operations leader who managed 25 million in paid spend, reporting to the CMO.', bullets: ['Grew the team.'] })), CFG);
+if (spendBudget.categories.includes('budget')) pass('checkScale: "25 million in paid spend" is budget'); else fail(`categories were ${JSON.stringify(spendBudget.categories)}`);
 
 const jargony = buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Netlify with a $20M budget, reporting to the CMO.', bullets: ['Shipped apps on Claude.'] });
 const jg = checkJargon(extractRegions(jargony), '', CFG);
@@ -89,6 +106,15 @@ const urlOnly = buildTestHtml({ summary: 'Marketing operations leader with a $20
 const urlRes = checkJargon(extractRegions(urlOnly), '', CFG);
 if (urlRes.status === 'pass' && urlRes.summary.length === 0 && urlRes.bullets.length === 0) pass('checkJargon: terms inside URLs and domains are not jargon'); else fail(`checkJargon URL scrub gave ${JSON.stringify(urlRes)}`);
 
+if (containsTerm('governs MCP connectors', 'MCP')) pass('containsTerm: matches bare term'); else fail('containsTerm should match bare term');
+if (containsTerm('We build MCPs and agents.', 'MCP')) pass('containsTerm: matches plural with trailing s'); else fail('containsTerm should match plural');
+if (!containsTerm('runs SMCP setups', 'MCP')) pass('containsTerm: does not match inside a longer word'); else fail('containsTerm should not match inside a longer word');
+
+const pluralLifted = checkJargon(extractRegions(buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors with a $20M budget, reporting to the CMO.', bullets: ['Plain bullet.'] })), 'We build MCPs and agents.', CFG);
+if (pluralLifted.status === 'pass' && pluralLifted.lifted.includes('MCP')) pass('checkJargon: plural in JD lifts singular term in summary'); else fail(`pluralLifted gave ${JSON.stringify(pluralLifted)}`);
+const pluralScan = checkJargon(extractRegions(buildTestHtml({ summary: 'Marketing operations leader who runs on MCPs with a $20M budget, reporting to the CMO.', bullets: ['Plain bullet.'] })), '', CFG);
+if (pluralScan.summary.includes('MCP')) pass('checkJargon: plural term in the summary is caught by the scan side'); else fail(`pluralScan gave ${JSON.stringify(pluralScan)}`);
+
 const lv = checkLevel('VP Marketing Operations', CV, CFG);
 if (lv.status === 'warning' && lv.distance === 2 && lv.candidateTitle === 'Director, Growth Marketing') pass('checkLevel: VP vs 19-month Director → distance 2 → warning'); else fail(`checkLevel gave ${JSON.stringify(lv)}`);
 if (checkLevel('Senior Director, Marketing Operations', CV, CFG).status === 'pass') pass('checkLevel: Senior Director → distance 1 → pass'); else fail('Sr Director should pass');
@@ -97,6 +123,11 @@ const vpRes = analyze(good, { jdTitle: 'VP Marketing Operations', cvText: CV, co
 if (vpRes.pass && vpRes.warnings.some((w) => w.startsWith('Level:'))) pass('analyze: level distance is a warning, not a fail'); else fail(`vpRes ${JSON.stringify({ pass: vpRes.pass, warnings: vpRes.warnings })}`);
 const titled = analyze(good, { jdText: '# Director of Marketing Operations\n\nAbout the role…', cvText: CV, config: CFG });
 if (titled.checks.function.status === 'pass') pass('analyze: JD title falls back to the first non-empty JD line'); else fail(`function ${JSON.stringify(titled.checks.function)}`);
+
+const empty = analyze('<html><body><p>Hi</p></body></html>', { config: CFG });
+if (empty.pass === false && empty.checks === null && empty.fails[0]?.startsWith('Parse:')) pass('analyze: empty summary and no bullets → early Parse fail, checks null'); else fail(`empty gave ${JSON.stringify(empty)}`);
+if (Array.isArray(empty.warnings) && empty.warnings.length === 0 && Array.isArray(empty.info) && empty.info.length === 0) pass('analyze: empty-region guard yields empty warnings/info'); else fail(`empty warnings/info were ${JSON.stringify({ warnings: empty.warnings, info: empty.info })}`);
+if (empty.regions && typeof empty.regions.summaryFirstSentence === 'string') pass('analyze: empty-region guard still returns the usual regions shape'); else fail(`empty.regions was ${JSON.stringify(empty.regions)}`);
 
 import { spawnSync } from 'child_process';
 import { mkdtempSync, writeFileSync } from 'fs';
@@ -135,6 +166,10 @@ try {
   if (dangling.status === 2) pass('CLI exits 2 when --jd has no value'); else fail(`dangling: status ${dangling.status}`);
   const self = cli('--self-test');
   if (self.status === 0 && /self-test: \d+ passed, 0 failed/.test(self.stdout)) pass('CLI --self-test passes'); else fail(`self-test: status ${self.status}\n${self.stdout}${self.stderr}`);
+  const unreadablePath = join(dir, 'unreadable.html');
+  writeFileSync(unreadablePath, '<html><body><p>Hi</p></body></html>');
+  const unreadable = cli(unreadablePath);
+  if (unreadable.status === 2 && unreadable.stdout.includes('Parse:')) pass('CLI exits 2 on unreadable input (no Summary/Experience section)'); else fail(`unreadable: status ${unreadable.status}\n${unreadable.stdout}${unreadable.stderr}`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

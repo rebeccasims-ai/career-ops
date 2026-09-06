@@ -79,6 +79,10 @@ export function extractRegions(html) {
   const first = jobs[0] || '';
   const ulStart = first.search(/<ul\b/i);
   const beforeUl = ulStart >= 0 ? first.slice(0, ulStart) : first;
+  // build-cv-html.mjs's template emits nothing between .job-header and <ul> today
+  // (no intro paragraph slot), so after stripping job-header/role/location this is
+  // routinely empty for generated CVs — checkScale's region still works off the
+  // summary and first bullet.
   const introHtml = beforeUl
     .replace(/<div class="job-header">[\s\S]*?<\/div>/i, '')
     .replace(/<div class="job-(?:role|location)">[\s\S]*?<\/div>/gi, '');
@@ -126,7 +130,7 @@ export function parseDurationMonths(dates, now = new Date()) {
   if (!m) return null;
   const start = monthIndex(m[1], false, now);
   const end = monthIndex(m[2], true, now);
-  if (start == null || end == null) return null;
+  if (start == null || end == null || end < start) return null;
   return end - start;
 }
 
@@ -151,13 +155,18 @@ export function containsPhrase(haystack, phrase) {
   return new RegExp(`(?:^|[^a-z0-9])${escapeRe(phrase)}(?![a-z0-9])`, 'i').test(String(haystack));
 }
 
-/** Longest level key that appears in the title, as a whole word. */
+/** Whole-word, case-insensitive, plural-tolerant term test: matches an optional trailing "s"/"es" ("MCP" also matches "MCPs"). */
+export function containsTerm(haystack, term) {
+  return new RegExp(`(?:^|[^a-z0-9])${escapeRe(term)}(?:e?s)?(?![a-z0-9])`, 'i').test(String(haystack));
+}
+
+/** Highest level among every whole-word key that appears in the title (not the longest key — "VP, Head of Growth" is VP-level, not Head-of-level). */
 export function levelOf(title, levels) {
-  const keys = Object.keys(levels).sort((a, b) => b.length - a.length);
-  for (const key of keys) {
-    if (containsPhrase(title, key)) return { key, level: levels[key] };
+  let best = null;
+  for (const key of Object.keys(levels)) {
+    if (containsPhrase(title, key) && (!best || levels[key] > best.level)) best = { key, level: levels[key] };
   }
-  return null;
+  return best;
 }
 
 export function highestMultiYearLevel(cvText, levels, minMonths) {
@@ -192,15 +201,29 @@ export function buildTestHtml({
 
 // ── The four checks ─────────────────────────────────────────────────────────
 const SCALE_PATTERNS = {
-  budget: /\$\s?\d[\d,.]*\s?(?:[mkb]\b|million|billion)|\b\d[\d,.]*\s?(?:million|billion)\b/i,
+  budget: /\$\s?\d[\d,.]*\s?(?:[mkb]\b|million|billion)|\b\d[\d,.]*\s?(?:million|billion)\s+(?:in\s+)?(?:budget|spend|revenue|arr|ad spend|paid|media)\b/i,
   size: /\b\d[\d,]*\+?[\s-]*(?:person|people|employees|marketers|engineers|headcount)\b|\borg(?:anization)? of \d/i,
   team: /\bdirect reports?\b|\bteam of\b|\bmultiple reports\b|\bhiring\b|\bgrowing the team\b|\b(?:manage|managed|managing|lead|led|leading|built and led) (?:a |the )?team\b/i,
   reporting: /\breport(?:s|ing|ed)? (?:directly )?(?:to|into) (?:the )?(?:cmo|ceo|cro|coo|cfo|chief|vp\b|svp|president|founder)/i,
 };
 
+// Abbreviations whose trailing "." must not be read as a sentence end.
+const ABBREVIATIONS = ['inc', 'ltd', 'llc', 'co', 'corp', 'u.s', 'sr', 'jr', 'dr', 'mr', 'ms', 'e.g', 'i.e', 'vs'];
+
 export function firstSentence(text) {
-  const m = String(text).match(/^(.*?[.!?])(?:\s|$)/);
-  return m ? m[1] : String(text);
+  const str = String(text);
+  const re = /[.!?](?=\s|$)/g;
+  let m;
+  let cut = -1;
+  while ((m = re.exec(str))) {
+    const before = str.slice(0, m.index);
+    const lastWord = (before.match(/([a-z.]+)$/i) || [])[1] || '';
+    if (ABBREVIATIONS.includes(lastWord.toLowerCase())) continue;
+    cut = m.index + 1;
+    break;
+  }
+  const result = cut >= 0 ? str.slice(0, cut) : str;
+  return result.length < 40 ? str : result;
 }
 
 export function firstNonEmptyLine(text) {
@@ -238,8 +261,8 @@ export function scrubUrls(text) {
 
 export function checkJargon(regions, jdText, config) {
   const jd = String(jdText || '');
-  const inJd = (term) => containsPhrase(jd, term);
-  const scan = (text) => config.jargon.filter((term) => containsPhrase(scrubUrls(text), term));
+  const inJd = (term) => containsTerm(jd, term);
+  const scan = (text) => config.jargon.filter((term) => containsTerm(scrubUrls(text), term));
   const summaryHits = scan(regions.summary);
   const bulletHits = scan(regions.firstRole.bullets.join(' '));
   const lifted = [...new Set([...summaryHits, ...bulletHits])].filter(inJd);
@@ -264,6 +287,16 @@ export function checkLevel(jdTitle, cvText, config) {
 export function analyze(html, { jdText = '', jdTitle = '', cvText = '', config } = {}) {
   if (!config) throw new Error('analyze() needs a config (see loadConfig)');
   const regions = extractRegions(html);
+  if (regions.summary === '' && regions.firstRole.bullets.length === 0) {
+    return {
+      pass: false,
+      fails: ['Parse: no Professional Summary or Work Experience section found — is this a generated CV? Section titles are matched in English (summary / experience / skills).'],
+      warnings: [],
+      info: [],
+      checks: null,
+      regions: { headline: regions.headline, summaryFirstSentence: firstSentence(regions.summary), firstRole: regions.firstRole.role },
+    };
+  }
   const title = jdTitle || firstNonEmptyLine(jdText);
   const checks = {
     function: checkFunction(regions, title, config),
@@ -328,7 +361,8 @@ function usage() {
 
 Would a recruiter skimming the top third of page one see a person at this level,
 in this function, at this scale? Fails on function mismatch, missing scale signals,
-or jargon in the summary; warns on a two-level jump. Exit 0 pass, 1 fail, 2 usage.`;
+or jargon in the summary; warns on a two-level jump. Exit 0 pass, 1 fail, 2 usage
+or unreadable input (no Professional Summary or Work Experience section found).`;
 }
 
 function printHuman(result, file) {
@@ -381,6 +415,7 @@ export function runCli(args = process.argv.slice(2)) {
   const result = analyze(readFileSync(htmlPath, 'utf-8'), { jdText, jdTitle: opts.title || '', cvText, config });
   if (opts.json) console.log(JSON.stringify(result, null, 2));
   else printHuman(result, positional[0]);
+  if (result.checks === null) return 2;
   return result.pass ? 0 : 1;
 }
 
