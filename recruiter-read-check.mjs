@@ -185,3 +185,102 @@ export function buildTestHtml({
 <div class="section"><div class="section-title">Skills</div><div class="skills-row">${skills}</div></div>
 </div></body></html>`;
 }
+
+// ── The four checks ─────────────────────────────────────────────────────────
+const SCALE_PATTERNS = {
+  budget: /\$\s?\d[\d,.]*\s?(?:[mkb]\b|million|billion)|\b\d[\d,.]*\s?(?:million|billion)\b/i,
+  size: /\b\d[\d,]*\+?[\s-]*(?:person|people|employees|marketers|engineers|headcount)\b|\borg(?:anization)? of \d/i,
+  team: /\bdirect reports?\b|\bteam of\b|\bmultiple reports\b|\bhiring\b|\bgrowing the team\b|\b(?:manage|managed|managing|lead|led|leading|built and led) (?:a |the )?team\b/i,
+  reporting: /\breport(?:s|ing|ed)? (?:directly )?(?:to|into) (?:the )?(?:cmo|ceo|cro|coo|cfo|chief|vp\b|svp|president|founder)/i,
+};
+
+export function firstSentence(text) {
+  const m = String(text).match(/^(.*?[.!?])(?:\s|$)/);
+  return m ? m[1] : String(text);
+}
+
+export function firstNonEmptyLine(text) {
+  const line = String(text || '').split('\n').map((l) => l.trim()).find(Boolean) || '';
+  return line.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
+}
+
+export function checkFunction(regions, jdTitle, config) {
+  const title = String(jdTitle || '').trim();
+  if (!title) return { status: 'skipped', reason: 'no JD title (pass --jd or --title)', detected: [], present: [], missing: [] };
+  const detected = Object.entries(config.functions)
+    .filter(([, syns]) => syns.some((s) => containsPhrase(title, s)))
+    .map(([name]) => name);
+  if (!detected.length) return { status: 'skipped', reason: `no known function word in JD title "${title}"`, detected, present: [], missing: [] };
+  const region = `${regions.headline} ${firstSentence(regions.summary)}`;
+  const present = detected.filter((name) => config.functions[name].some((s) => containsPhrase(region, s)));
+  const missing = detected.filter((name) => !present.includes(name));
+  const status = present.length ? (missing.length ? 'warning' : 'pass') : 'fail';
+  return { status, detected, present, missing };
+}
+
+export function checkScale(regions, config) {
+  const region = [regions.summary, regions.firstRole.intro, regions.firstRole.bullets[0] || ''].join(' ');
+  const categories = Object.entries(SCALE_PATTERNS).filter(([, re]) => re.test(region)).map(([name]) => name);
+  const required = config.thresholds.min_scale_categories;
+  return { status: categories.length >= required ? 'pass' : 'fail', categories, required };
+}
+
+export function checkJargon(regions, jdText, config) {
+  const jd = String(jdText || '');
+  const inJd = (term) => containsPhrase(jd, term);
+  const scan = (text) => config.jargon.filter((term) => containsPhrase(text, term));
+  const summaryHits = scan(regions.summary);
+  const bulletHits = scan(regions.firstRole.bullets.join(' '));
+  const lifted = [...new Set([...summaryHits, ...bulletHits])].filter(inJd);
+  const summary = summaryHits.filter((t) => !inJd(t));
+  const bullets = bulletHits.filter((t) => !inJd(t) && !summary.includes(t));
+  const max = config.thresholds.max_summary_jargon;
+  const status = summary.length > max ? 'fail' : (summary.length || bullets.length) ? 'warning' : 'pass';
+  return { status, summary, bullets, lifted, max };
+}
+
+export function checkLevel(jdTitle, cvText, config) {
+  const jd = levelOf(jdTitle || '', config.levels);
+  if (!jd) return { status: 'skipped', reason: 'no level word in the JD title', jdTitle };
+  const minMonths = config.thresholds.multi_year_months;
+  const cand = highestMultiYearLevel(cvText, config.levels, minMonths);
+  if (!cand) return { status: 'skipped', reason: `no role in cv.md held ${minMonths}+ months`, jdTitle };
+  const distance = jd.level - cand.level;
+  const status = distance >= config.thresholds.level_warning_distance ? 'warning' : 'pass';
+  return { status, jdTitle, jdLevel: jd.level, jdKey: jd.key, candidateTitle: cand.title, candidateLevel: cand.level, candidateMonths: cand.months, distance };
+}
+
+export function analyze(html, { jdText = '', jdTitle = '', cvText = '', config } = {}) {
+  if (!config) throw new Error('analyze() needs a config (see loadConfig)');
+  const regions = extractRegions(html);
+  const title = jdTitle || firstNonEmptyLine(jdText);
+  const checks = {
+    function: checkFunction(regions, title, config),
+    scale: checkScale(regions, config),
+    jargon: checkJargon(regions, jdText, config),
+    level: checkLevel(title, cvText, config),
+  };
+  const fails = [];
+  const warnings = [];
+  const info = [];
+  const f = checks.function;
+  if (f.status === 'fail') fails.push(`Function: the JD title names ${f.detected.join(', ')}; none of it appears in the headline or the summary's first sentence`);
+  else if (f.status === 'warning') warnings.push(`Function: ${f.missing.join(', ')} named in the JD title but absent from the summary's first sentence`);
+  else if (f.status === 'skipped') info.push(`Function check skipped: ${f.reason}`);
+  const s = checks.scale;
+  if (s.status === 'fail') fails.push(`Scale: ${s.categories.length} of ${s.required} required scale signals in the top block (${s.categories.join(', ') || 'none'}); add a budget figure, org or company size, a team line, or the reporting line`);
+  const j = checks.jargon;
+  if (j.status === 'fail') fails.push(`Jargon: ${j.summary.join(', ')} in the summary and not in the JD (max ${j.max} allowed)`);
+  else if (j.status === 'warning') warnings.push(`Jargon not in the JD: summary [${j.summary.join(', ') || '-'}], first-role bullets [${j.bullets.join(', ') || '-'}]`);
+  const l = checks.level;
+  if (l.status === 'warning') warnings.push(`Level: "${l.jdTitle}" sits ${l.distance} levels above the highest title held ${config.thresholds.multi_year_months}+ months ("${l.candidateTitle}", ${l.candidateMonths} months)`);
+  else if (l.status === 'skipped') info.push(`Level check skipped: ${l.reason}`);
+  return {
+    pass: fails.length === 0,
+    fails,
+    warnings,
+    info,
+    checks,
+    regions: { headline: regions.headline, summaryFirstSentence: firstSentence(regions.summary), firstRole: regions.firstRole.role },
+  };
+}

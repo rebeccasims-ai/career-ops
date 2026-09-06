@@ -45,3 +45,51 @@ if (best && best.level === 3 && best.title === 'Director, Growth Marketing') pas
 
 const cfg = loadConfig();
 if (cfg.functions['marketing operations'] && cfg.levels.vp === 5 && Array.isArray(cfg.jargon) && cfg.thresholds.min_scale_categories === 2) pass('loadConfig reads config/recruiter-read.yml'); else fail(`config was ${JSON.stringify(cfg)}`);
+import { analyze, checkFunction, checkScale, checkJargon, checkLevel, firstSentence, firstNonEmptyLine } from '../recruiter-read-check.mjs';
+
+console.log('\nrecruiter-read-check.mjs — the four checks');
+
+const CFG = loadConfig();
+const CV = [
+  '### Head of Marketing Operations · Acme · Austin, TX · Jan 2026 – Present',
+  '### Senior Manager, Lifecycle · Beta · Austin, TX · Mar 2020 – Jan 2026',
+  '### Director, Growth Marketing · Gamma · Austin, TX · Aug 2018 – Mar 2020',
+].join('\n');
+const GOOD_SUMMARY = 'Marketing operations leader with 12 years running a marketing org of 60 people and a $20M budget, reporting to the CMO. Second sentence.';
+const good = buildTestHtml({ summary: GOOD_SUMMARY, role: 'Director of Marketing Operations', bullets: ['Built the function from zero; multiple direct reports, and hiring.', 'Second bullet.'] });
+
+if (firstSentence(GOOD_SUMMARY) === 'Marketing operations leader with 12 years running a marketing org of 60 people and a $20M budget, reporting to the CMO.') pass('firstSentence stops at the first period'); else fail(`firstSentence gave ${JSON.stringify(firstSentence(GOOD_SUMMARY))}`);
+if (firstNonEmptyLine('\n\n# **Director of Marketing Operations**\nbody') === 'Director of Marketing Operations') pass('firstNonEmptyLine strips heading marks and bold'); else fail('firstNonEmptyLine');
+
+const okAll = analyze(good, { jdTitle: 'Director of Marketing Operations', cvText: CV, config: CFG });
+if (okAll.pass && okAll.fails.length === 0) pass('analyze: on-function, scaled, plain-language CV passes'); else fail(`expected pass, got ${JSON.stringify(okAll.fails)}`);
+if (okAll.checks.scale.categories.length >= 3) pass(`analyze: scale sees ${okAll.checks.scale.categories.join(', ')}`); else fail(`scale categories ${JSON.stringify(okAll.checks.scale.categories)}`);
+
+const fn = checkFunction(extractRegions(good), 'Head of Demand Generation', CFG);
+if (fn.status === 'fail' && fn.detected.includes('demand generation')) pass('checkFunction: demand-gen title vs ops summary fails'); else fail(`checkFunction gave ${JSON.stringify(fn)}`);
+const fnWarn = checkFunction(extractRegions(good), 'VP Marketing Strategy and Operations', CFG);
+if (fnWarn.status === 'warning' && fnWarn.present.includes('marketing operations') && fnWarn.missing.includes('strategy')) pass('checkFunction: one function present, one missing → warning'); else fail(`checkFunction gave ${JSON.stringify(fnWarn)}`);
+if (checkFunction(extractRegions(good), '', CFG).status === 'skipped') pass('checkFunction: no title → skipped'); else fail('checkFunction should skip without a title');
+
+const flat = buildTestHtml({ summary: 'Marketing operations leader who loves systems. More words.', bullets: ['Improved processes.'] });
+const sc = checkScale(extractRegions(flat), CFG);
+if (sc.status === 'fail' && sc.categories.length === 0) pass('checkScale: no scale signals → fail'); else fail(`checkScale gave ${JSON.stringify(sc)}`);
+const flatRes = analyze(flat, { jdTitle: 'Director of Marketing Operations', cvText: CV, config: CFG });
+if (!flatRes.pass && flatRes.fails.some((f) => f.startsWith('Scale:'))) pass('analyze: scale fail surfaces as a fail line'); else fail(`fails were ${JSON.stringify(flatRes.fails)}`);
+
+const jargony = buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Netlify with a $20M budget, reporting to the CMO.', bullets: ['Shipped apps on Claude.'] });
+const jg = checkJargon(extractRegions(jargony), '', CFG);
+if (jg.status === 'fail' && jg.summary.includes('MCP') && jg.summary.includes('Netlify') && jg.bullets.includes('Claude')) pass('checkJargon: two unlifted terms in the summary → fail; bullet term listed'); else fail(`checkJargon gave ${JSON.stringify(jg)}`);
+const lifted = checkJargon(extractRegions(jargony), 'We run MCP servers on Netlify and Claude.', CFG);
+if (lifted.status === 'pass' && lifted.lifted.length === 3) pass('checkJargon: terms the JD uses are lifted'); else fail(`lifted gave ${JSON.stringify(lifted)}`);
+const skillsOnly = buildTestHtml({ summary: GOOD_SUMMARY, bullets: ['Plain bullet.'], skills: 'MCP, Netlify, Claude, n8n' });
+if (checkJargon(extractRegions(skillsOnly), '', CFG).status === 'pass') pass('checkJargon: the Skills block is exempt'); else fail('skills block should be exempt');
+
+const lv = checkLevel('VP Marketing Operations', CV, CFG);
+if (lv.status === 'warning' && lv.distance === 2 && lv.candidateTitle === 'Director, Growth Marketing') pass('checkLevel: VP vs 19-month Director → distance 2 → warning'); else fail(`checkLevel gave ${JSON.stringify(lv)}`);
+if (checkLevel('Senior Director, Marketing Operations', CV, CFG).status === 'pass') pass('checkLevel: Senior Director → distance 1 → pass'); else fail('Sr Director should pass');
+if (checkLevel('Marketing Wizard', CV, CFG).status === 'skipped') pass('checkLevel: no level word → skipped'); else fail('should skip');
+const vpRes = analyze(good, { jdTitle: 'VP Marketing Operations', cvText: CV, config: CFG });
+if (vpRes.pass && vpRes.warnings.some((w) => w.startsWith('Level:'))) pass('analyze: level distance is a warning, not a fail'); else fail(`vpRes ${JSON.stringify({ pass: vpRes.pass, warnings: vpRes.warnings })}`);
+const titled = analyze(good, { jdText: '# Director of Marketing Operations\n\nAbout the role…', cvText: CV, config: CFG });
+if (titled.checks.function.status === 'pass') pass('analyze: JD title falls back to the first non-empty JD line'); else fail(`function ${JSON.stringify(titled.checks.function)}`);
