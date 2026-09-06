@@ -1,5 +1,66 @@
 # Changelog
 
+## [0.11.0](https://github.com/rebeccasims-ai/career-ops/compare/web-v0.10.0...web-v0.11.0) (2026-09-06)
+
+
+### Features
+
+* **oferta:** add evidence-tiered requirement importance to Block B ([#3596](https://github.com/rebeccasims-ai/career-ops/issues/3596)) ([14710e2](https://github.com/rebeccasims-ai/career-ops/commit/14710e29a6a801ea3ae52bb3f15756dc9ada7d29))
+* **providers:** add Feishu Jobs and MokaHR scanner providers ([#3491](https://github.com/rebeccasims-ai/career-ops/issues/3491)) ([1696bec](https://github.com/rebeccasims-ai/career-ops/commit/1696bec4d021768e7359f9aad6b329cba883da20))
+* **web:** add a global "Back to Top" button ([#2821](https://github.com/rebeccasims-ai/career-ops/issues/2821)) ([e5e786b](https://github.com/rebeccasims-ai/career-ops/commit/e5e786b1116e6c5e4c5bd2020f3bc1f6e5dd2058))
+* **web:** opt-in origin allowlist for the local dashboard API ([#3597](https://github.com/rebeccasims-ai/career-ops/issues/3597)) ([0754973](https://github.com/rebeccasims-ai/career-ops/commit/075497329a55d7c1e5184cfffb21fd0efeaf13ba))
+* **web:** restrict the local dashboard API to same-origin and loopback ([b3974e6](https://github.com/rebeccasims-ai/career-ops/commit/b3974e6104d83c2714fd0d071898a7c7b9f68726))
+
+
+### Bug Fixes
+
+* **deps:** refresh web lockfile for Next update ([2ca6c00](https://github.com/rebeccasims-ai/career-ops/commit/2ca6c00fa9d18cb45caef99fea0b97b05971bf55))
+* **deps:** update web npm dependencies (major) ([1207eae](https://github.com/rebeccasims-ai/career-ops/commit/1207eae4b5799cb92602c99737fd2f0cee1319c9))
+* **deps:** update web npm dependencies (next 16.3.1, shaders 0.0.80) ([cf793f6](https://github.com/rebeccasims-ai/career-ops/commit/cf793f6bdfffd78b3c2613b202b9905c290bec0e))
+* **tracker:** resolve addition columns by name so score and status cannot transpose ([00b0296](https://github.com/rebeccasims-ai/career-ops/commit/00b0296c6071eb955f38404e60a10ceaccad45b5))
+* **web,dashboard:** point two user-facing references at the repository's new home ([6c0e68d](https://github.com/rebeccasims-ai/career-ops/commit/6c0e68d472d4ee1e0082fd861c133778f262ecfe))
+* **web:** a company with no usable slug must not match every tailored CV ([#3214](https://github.com/rebeccasims-ai/career-ops/issues/3214)) ([880c58b](https://github.com/rebeccasims-ai/career-ops/commit/880c58b999033b7f38439f20246943e9342e7fdf))
+* **web:** block_hard survives the Explore round-trip — type, URL params, seed and serializer ([#3102](https://github.com/rebeccasims-ai/career-ops/issues/3102)) ([89d6b1b](https://github.com/rebeccasims-ai/career-ops/commit/89d6b1b708454cca863bcf11464c87b76400b14e))
+* **web:** classify a tracker-lock filesystem failure as itself, not as contention ([#3138](https://github.com/rebeccasims-ai/career-ops/issues/3138)) ([cf880eb](https://github.com/rebeccasims-ai/career-ops/commit/cf880eb55945019663e1b423499041097cb24ccd))
+* **web:** don't let a failed fetch become a scored report ([#3826](https://github.com/rebeccasims-ai/career-ops/issues/3826)) ([10ede60](https://github.com/rebeccasims-ai/career-ops/commit/10ede60522f1abd71dfd8c93266f9176180213ac))
+* **web:** enable apply from the generated pdf index ([ac761fa](https://github.com/rebeccasims-ai/career-ops/commit/ac761fa612fc943b1ef9458f704fefd653954955))
+* **web:** find Grok in its default install dirs, not only on PATH ([77657dc](https://github.com/rebeccasims-ai/career-ops/commit/77657dcd0bcb7c2e9a9950148d337d160aa5b459))
+* **web:** give grok a parser, and make the token fold per-CLI ([#2689](https://github.com/rebeccasims-ai/career-ops/issues/2689)) ([c7549fb](https://github.com/rebeccasims-ai/career-ops/commit/c7549fb3593f9ee456d7118beb80b0ee6e76747c))
+* **web:** give the methodology link a real tap target and a new-tab cue ([#3023](https://github.com/rebeccasims-ai/career-ops/issues/3023)) ([344a116](https://github.com/rebeccasims-ai/career-ops/commit/344a116de15fd98c1e1d48aae9bf08bbdc4f067e))
+* **web:** honour language.modes_dir and language.output on web-triggered runs ([#3253](https://github.com/rebeccasims-ai/career-ops/issues/3253)) ([316906e](https://github.com/rebeccasims-ai/career-ops/commit/316906e64cc779d7580122b1d345c4c06f503a4b))
+* **web:** identify the verdict block by its heading, not by the letter ([#3502](https://github.com/rebeccasims-ai/career-ops/issues/3502)) ([0ef1bfb](https://github.com/rebeccasims-ai/career-ops/commit/0ef1bfbe2385551af415e05858900710d0aadd23))
+* **web:** ignore nonfatal CLI stderr on clean run exit ([#1974](https://github.com/rebeccasims-ai/career-ops/issues/1974)) ([7f430ee](https://github.com/rebeccasims-ai/career-ops/commit/7f430eeab07b8bd514295fd02aec571c42699d1e))
+* **web:** keep child stderr out of the status response on the crash path ([#3022](https://github.com/rebeccasims-ai/career-ops/issues/3022)) ([883ebec](https://github.com/rebeccasims-ai/career-ops/commit/883ebec33c1c775bb295c4b4eecca31fc53066da))
+* **web:** keep the query string in the Explore dedup key so distinct postings don't collapse ([#3082](https://github.com/rebeccasims-ai/career-ops/issues/3082)) ([275e213](https://github.com/rebeccasims-ai/career-ops/commit/275e2137fb804a762caed8bed34194c5920b71c4))
+* **web:** keep the run stream alive during silent agent phases ([#3026](https://github.com/rebeccasims-ai/career-ops/issues/3026)) ([aaeb114](https://github.com/rebeccasims-ai/career-ops/commit/aaeb114238283ce3cc44b7b3e2168ed2d22c56a8))
+* **web:** key company logos with the Unicode-aware normalizer so non-Latin names don't collide ([#3134](https://github.com/rebeccasims-ai/career-ops/issues/3134)) ([7b9f858](https://github.com/rebeccasims-ai/career-ops/commit/7b9f8588f57d3313265c49f37d2055bb533a7d08))
+* **web:** only surface follow-ups that are actually due ([#2157](https://github.com/rebeccasims-ai/career-ops/issues/2157)) ([82e1055](https://github.com/rebeccasims-ai/career-ops/commit/82e10559beb8c80d8a50bcd456e1a893e8ba76f8))
+* **web:** order the Today action queue before truncating it ([3a067ee](https://github.com/rebeccasims-ai/career-ops/commit/3a067ee580b7982cf5dd6edf7895112e4e99600b))
+* **web:** parseCliJson misses set-status.mjs's pretty-printed success ([#3602](https://github.com/rebeccasims-ai/career-ops/issues/3602)) ([848ca44](https://github.com/rebeccasims-ai/career-ops/commit/848ca440fb2d243ae08205ab3d0bc12903a36c65))
+* **web:** persist the only installed CLI so jobs can start ([#2966](https://github.com/rebeccasims-ai/career-ops/issues/2966)) ([e80bf7e](https://github.com/rebeccasims-ai/career-ops/commit/e80bf7e60ce95e92dcd7501f97fda092b60b8f95))
+* **web:** preserve a malformed portals.yml instead of overwriting it with the example ([07ed4f3](https://github.com/rebeccasims-ai/career-ops/commit/07ed4f31295bee9d03ce1ab61d6d59c835431ff7))
+* **web:** rank "Awaiting your decision" by every EVALUATED alias, not an English prefix ([d7573e1](https://github.com/rebeccasims-ai/career-ops/commit/d7573e189193993c56d19c9216313f0fd4cebee2))
+* **web:** regenerate the nested web/ lockfile on postcss bumps ([dba2a2e](https://github.com/rebeccasims-ai/career-ops/commit/dba2a2ed7e6317e5962be51c2fe680376221e0de))
+* **web:** report the uncapped weekly match count while keeping the render bounded ([#2662](https://github.com/rebeccasims-ai/career-ops/issues/2662)) ([6e9f029](https://github.com/rebeccasims-ai/career-ops/commit/6e9f0299dff6fc0903b97b349390408d1f859571))
+* **web:** require the cv- prefix so the tailored-CV resolvers stop returning the cover letter ([#2156](https://github.com/rebeccasims-ai/career-ops/issues/2156)) ([414d340](https://github.com/rebeccasims-ai/career-ops/commit/414d340b4425bf199ddad36dfc0a551da4e99fe0))
+* **web:** resolve 27 unmapped states.yml aliases and fix the Turkish status fold ([#2918](https://github.com/rebeccasims-ai/career-ops/issues/2918)) ([360ce49](https://github.com/rebeccasims-ai/career-ops/commit/360ce490c2e8d610a76767261679ed6b02880c9c))
+* **web:** resolve company logos by name, not one guessed domain ([#2942](https://github.com/rebeccasims-ai/career-ops/issues/2942)) ([6096fc9](https://github.com/rebeccasims-ai/career-ops/commit/6096fc9497f3d8bd920d2eaa83c13c30fa989f3d))
+* **web:** resolve the tailored CV for THIS application, not the newest for the company ([ca11627](https://github.com/rebeccasims-ai/career-ops/commit/ca116279d3a5ba9a18e57e3f03f056066c178649))
+* **web:** salvage truncated JSON at each prefix's own depth, not one global pad ([#3142](https://github.com/rebeccasims-ai/career-ops/issues/3142)) ([a308bc5](https://github.com/rebeccasims-ai/career-ops/commit/a308bc5cc96197f3ed84ac75493d75c45a770f02))
+* **web:** self-host the production fonts so the app starts without Google ([a2e46c3](https://github.com/rebeccasims-ai/career-ops/commit/a2e46c329fa9819ca6748a437c4ecdbdac4a6ec2))
+* **web:** show a cause-specific hint on job failure instead of an always-auth prompt ([#2158](https://github.com/rebeccasims-ai/career-ops/issues/2158)) ([d372908](https://github.com/rebeccasims-ai/career-ops/commit/d37290897f15f5284788c34cafcdabd3bd56f5bf))
+* **web:** show Via attribution for confidential employers ([f749939](https://github.com/rebeccasims-ai/career-ops/commit/f7499392ff75bf966693bdae535f785743ad300d))
+* **web:** stamp pipeline first_seen with the local day, not UTC ([#3081](https://github.com/rebeccasims-ai/career-ops/issues/3081)) ([809e93b](https://github.com/rebeccasims-ai/career-ops/commit/809e93b419094dcc77c8f3d3f1a1c31c578a547a))
+* **web:** stop evaluation tables collapsing to one word per line ([#3254](https://github.com/rebeccasims-ai/career-ops/issues/3254)) ([b3c1e12](https://github.com/rebeccasims-ai/career-ops/commit/b3c1e127e02c588aeefb8d02d14759706ecf1fc2))
+* **web:** stop first-run from claiming no setup ([#2965](https://github.com/rebeccasims-ai/career-ops/issues/2965)) ([f028012](https://github.com/rebeccasims-ai/career-ops/commit/f0280129e63a063a88b00598cc09747cd70bc19e))
+* **web:** stop hiding an employer's whole board after one evaluation ([b56cde5](https://github.com/rebeccasims-ai/career-ops/commit/b56cde551d84ad5c28d7ea8b99edcc450a2b8b4c))
+* **web:** stop killing evaluate runs at 285s and misreporting the kill ([#3124](https://github.com/rebeccasims-ai/career-ops/issues/3124)) ([8a245ed](https://github.com/rebeccasims-ai/career-ops/commit/8a245edd677598aa539e74c7565be44b7676e4ab))
+* **web:** stop tracing runtime data paths ([0a9d71f](https://github.com/rebeccasims-ai/career-ops/commit/0a9d71fe94286bfe26cdd99e5d7b3d50b27a948a))
+* **web:** tab label spacing and report table word-breaking ([#3160](https://github.com/rebeccasims-ai/career-ops/issues/3160)) ([102560b](https://github.com/rebeccasims-ai/career-ops/commit/102560bb904f5d107338719f8ce3bdce8d9399e5))
+* **web:** tell the beta reporter's user when the dupe search could not run ([77bf490](https://github.com/rebeccasims-ai/career-ops/commit/77bf4906abc5c5f63ac07a6c27a7f24c1d03683d))
+* **web:** Today primary action opens the report ([#2967](https://github.com/rebeccasims-ai/career-ops/issues/2967)) ([74781e6](https://github.com/rebeccasims-ai/career-ops/commit/74781e6d66784bff97e15c507db7383a7fa2ab59))
+* **web:** use next/link for decision-card report link ([#1931](https://github.com/rebeccasims-ai/career-ops/issues/1931)) ([e7b38b3](https://github.com/rebeccasims-ai/career-ops/commit/e7b38b3e086540060f5f5704afd55ea5fa4a4a3c))
+
 ## [0.10.0](https://github.com/career-ops-hq/career-ops/compare/web-v0.9.0...web-v0.10.0) (2026-09-03)
 
 
