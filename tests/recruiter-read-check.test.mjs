@@ -102,7 +102,7 @@ import { spawnSync } from 'child_process';
 import { mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { ROOT } from './helpers.mjs';
+import { ROOT, rmSync } from './helpers.mjs';
 
 console.log('\nrecruiter-read-check.mjs — CLI');
 
@@ -118,19 +118,23 @@ writeFileSync(cvPath, CV);
 const script = join(ROOT, 'recruiter-read-check.mjs');
 const cli = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf-8' });
 
-const ok = cli(goodPath, '--jd', jdPath, '--cv', cvPath);
-if (ok.status === 0 && ok.stdout.includes('passed')) pass('CLI exits 0 on a passing CV'); else fail(`CLI pass: status ${ok.status}\n${ok.stdout}${ok.stderr}`);
-const bad = cli(badPath, '--jd', jdPath, '--cv', cvPath);
-if (bad.status === 1 && bad.stdout.includes('[fail] Scale:')) pass('CLI exits 1 and prints the fail line on a flat CV'); else fail(`CLI fail: status ${bad.status}\n${bad.stdout}${bad.stderr}`);
-const js = cli(goodPath, '--jd', jdPath, '--cv', cvPath, '--json');
-let parsed = null;
-try { parsed = JSON.parse(js.stdout); } catch { /* handled below */ }
-if (parsed && parsed.pass === true && parsed.checks.function.status === 'pass') pass('CLI --json emits the analyze() result'); else fail(`CLI json: ${js.stdout}${js.stderr}`);
-const usage = cli();
-if (usage.status === 2 && usage.stderr.includes('Usage')) pass('CLI exits 2 with usage when no file is given'); else fail(`usage: status ${usage.status}`);
-const missing = cli(join(dir, 'nope.html'));
-if (missing.status === 2) pass('CLI exits 2 on a missing file'); else fail(`missing: status ${missing.status}`);
-const dangling = cli(goodPath, '--jd');
-if (dangling.status === 2) pass('CLI exits 2 when --jd has no value'); else fail(`dangling: status ${dangling.status}`);
-const self = cli('--self-test');
-if (self.status === 0 && /self-test: \d+ passed, 0 failed/.test(self.stdout)) pass('CLI --self-test passes'); else fail(`self-test: status ${self.status}\n${self.stdout}${self.stderr}`);
+try {
+  const ok = cli(goodPath, '--jd', jdPath, '--cv', cvPath);
+  if (ok.status === 0 && ok.stdout.includes('passed')) pass('CLI exits 0 on a passing CV'); else fail(`CLI pass: status ${ok.status}\n${ok.stdout}${ok.stderr}`);
+  const bad = cli(badPath, '--jd', jdPath, '--cv', cvPath);
+  if (bad.status === 1 && bad.stdout.includes('[fail] Scale:')) pass('CLI exits 1 and prints the fail line on a flat CV'); else fail(`CLI fail: status ${bad.status}\n${bad.stdout}${bad.stderr}`);
+  const js = cli(goodPath, '--jd', jdPath, '--cv', cvPath, '--json');
+  let parsed = null;
+  try { parsed = JSON.parse(js.stdout); } catch { /* handled below */ }
+  if (parsed && parsed.pass === true && parsed.checks.function.status === 'pass') pass('CLI --json emits the analyze() result'); else fail(`CLI json: ${js.stdout}${js.stderr}`);
+  const usage = cli();
+  if (usage.status === 2 && usage.stderr.includes('Usage')) pass('CLI exits 2 with usage when no file is given'); else fail(`usage: status ${usage.status}`);
+  const missing = cli(join(dir, 'nope.html'));
+  if (missing.status === 2) pass('CLI exits 2 on a missing file'); else fail(`missing: status ${missing.status}`);
+  const dangling = cli(goodPath, '--jd');
+  if (dangling.status === 2) pass('CLI exits 2 when --jd has no value'); else fail(`dangling: status ${dangling.status}`);
+  const self = cli('--self-test');
+  if (self.status === 0 && /self-test: \d+ passed, 0 failed/.test(self.stdout)) pass('CLI --self-test passes'); else fail(`self-test: status ${self.status}\n${self.stdout}${self.stderr}`);
+} finally {
+  rmSync(dir, { recursive: true, force: true });
+}
