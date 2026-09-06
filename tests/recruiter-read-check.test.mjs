@@ -85,6 +85,10 @@ if (lifted.status === 'pass' && lifted.lifted.length === 3) pass('checkJargon: t
 const skillsOnly = buildTestHtml({ summary: GOOD_SUMMARY, bullets: ['Plain bullet.'], skills: 'MCP, Netlify, Claude, n8n' });
 if (checkJargon(extractRegions(skillsOnly), '', CFG).status === 'pass') pass('checkJargon: the Skills block is exempt'); else fail('skills block should be exempt');
 
+const urlOnly = buildTestHtml({ summary: 'Marketing operations leader with a $20M budget, reporting to the CMO. Portfolio: becca-bot.netlify.app.', bullets: ['See https://example.netlify.app/notion for details.'] });
+const urlRes = checkJargon(extractRegions(urlOnly), '', CFG);
+if (urlRes.status === 'pass' && urlRes.summary.length === 0 && urlRes.bullets.length === 0) pass('checkJargon: terms inside URLs and domains are not jargon'); else fail(`checkJargon URL scrub gave ${JSON.stringify(urlRes)}`);
+
 const lv = checkLevel('VP Marketing Operations', CV, CFG);
 if (lv.status === 'warning' && lv.distance === 2 && lv.candidateTitle === 'Director, Growth Marketing') pass('checkLevel: VP vs 19-month Director → distance 2 → warning'); else fail(`checkLevel gave ${JSON.stringify(lv)}`);
 if (checkLevel('Senior Director, Marketing Operations', CV, CFG).status === 'pass') pass('checkLevel: Senior Director → distance 1 → pass'); else fail('Sr Director should pass');

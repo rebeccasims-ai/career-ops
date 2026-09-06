@@ -225,10 +225,17 @@ export function checkScale(regions, config) {
   return { status: categories.length >= required ? 'pass' : 'fail', categories, required };
 }
 
+/** Drop URLs and bare domains so a portfolio link like becca-bot.netlify.app never reads as jargon. */
+export function scrubUrls(text) {
+  return String(text)
+    .replace(/\bhttps?:\/\/\S+/gi, ' ')
+    .replace(/\b[\w-]+(?:\.[\w-]+)+\.(?:app|com|io|dev|net|org|ai|co|me)\b/gi, ' ');
+}
+
 export function checkJargon(regions, jdText, config) {
   const jd = String(jdText || '');
   const inJd = (term) => containsPhrase(jd, term);
-  const scan = (text) => config.jargon.filter((term) => containsPhrase(text, term));
+  const scan = (text) => config.jargon.filter((term) => containsPhrase(scrubUrls(text), term));
   const summaryHits = scan(regions.summary);
   const bulletHits = scan(regions.firstRole.bullets.join(' '));
   const lifted = [...new Set([...summaryHits, ...bulletHits])].filter(inJd);
