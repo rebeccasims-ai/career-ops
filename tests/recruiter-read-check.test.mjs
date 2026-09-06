@@ -93,3 +93,40 @@ const vpRes = analyze(good, { jdTitle: 'VP Marketing Operations', cvText: CV, co
 if (vpRes.pass && vpRes.warnings.some((w) => w.startsWith('Level:'))) pass('analyze: level distance is a warning, not a fail'); else fail(`vpRes ${JSON.stringify({ pass: vpRes.pass, warnings: vpRes.warnings })}`);
 const titled = analyze(good, { jdText: '# Director of Marketing Operations\n\nAbout the role…', cvText: CV, config: CFG });
 if (titled.checks.function.status === 'pass') pass('analyze: JD title falls back to the first non-empty JD line'); else fail(`function ${JSON.stringify(titled.checks.function)}`);
+
+import { spawnSync } from 'child_process';
+import { mkdtempSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { ROOT } from './helpers.mjs';
+
+console.log('\nrecruiter-read-check.mjs — CLI');
+
+const dir = mkdtempSync(join(tmpdir(), 'rrc-'));
+const goodPath = join(dir, 'good.html');
+writeFileSync(goodPath, good);
+const badPath = join(dir, 'bad.html');
+writeFileSync(badPath, flat);
+const jdPath = join(dir, 'jd.md');
+writeFileSync(jdPath, '# Director of Marketing Operations\n\nWe need someone to own the stack.\n');
+const cvPath = join(dir, 'cv.md');
+writeFileSync(cvPath, CV);
+const script = join(ROOT, 'recruiter-read-check.mjs');
+const cli = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf-8' });
+
+const ok = cli(goodPath, '--jd', jdPath, '--cv', cvPath);
+if (ok.status === 0 && ok.stdout.includes('passed')) pass('CLI exits 0 on a passing CV'); else fail(`CLI pass: status ${ok.status}\n${ok.stdout}${ok.stderr}`);
+const bad = cli(badPath, '--jd', jdPath, '--cv', cvPath);
+if (bad.status === 1 && bad.stdout.includes('[fail] Scale:')) pass('CLI exits 1 and prints the fail line on a flat CV'); else fail(`CLI fail: status ${bad.status}\n${bad.stdout}${bad.stderr}`);
+const js = cli(goodPath, '--jd', jdPath, '--cv', cvPath, '--json');
+let parsed = null;
+try { parsed = JSON.parse(js.stdout); } catch { /* handled below */ }
+if (parsed && parsed.pass === true && parsed.checks.function.status === 'pass') pass('CLI --json emits the analyze() result'); else fail(`CLI json: ${js.stdout}${js.stderr}`);
+const usage = cli();
+if (usage.status === 2 && usage.stderr.includes('Usage')) pass('CLI exits 2 with usage when no file is given'); else fail(`usage: status ${usage.status}`);
+const missing = cli(join(dir, 'nope.html'));
+if (missing.status === 2) pass('CLI exits 2 on a missing file'); else fail(`missing: status ${missing.status}`);
+const dangling = cli(goodPath, '--jd');
+if (dangling.status === 2) pass('CLI exits 2 when --jd has no value'); else fail(`dangling: status ${dangling.status}`);
+const self = cli('--self-test');
+if (self.status === 0 && /self-test: \d+ passed, 0 failed/.test(self.stdout)) pass('CLI --self-test passes'); else fail(`self-test: status ${self.status}\n${self.stdout}${self.stderr}`);

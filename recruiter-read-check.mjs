@@ -284,3 +284,96 @@ export function analyze(html, { jdText = '', jdTitle = '', cvText = '', config }
     regions: { headline: regions.headline, summaryFirstSentence: firstSentence(regions.summary), firstRole: regions.firstRole.role },
   };
 }
+
+// ── Self-test (synthetic documents only; no real names) ────────────────────
+export function runSelfTest() {
+  let passed = 0;
+  let failed = 0;
+  const check = (label, cond) => { if (cond) passed++; else { failed++; console.log(`  FAIL: ${label}`); } };
+  const config = loadConfig();
+  const cv = '### Director, Marketing Operations · Acme · Remote · Jan 2020 – Dec 2021\n### Senior Manager, Marketing · Beta · Remote · Jan 2015 – Dec 2019\n';
+  const good = buildTestHtml({
+    summary: 'Marketing operations leader with 12 years running a marketing org of 60 people and a $20M budget, reporting to the CMO.',
+    bullets: ['Built the function from zero; multiple direct reports, and hiring.'],
+  });
+  const r1 = analyze(good, { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
+  check('on-function, scaled, plain CV passes', r1.pass && r1.warnings.length === 0);
+  const r2 = analyze(good, { jdTitle: 'Head of Demand Generation', cvText: cv, config });
+  check('off-function title fails', !r2.pass && r2.fails[0].startsWith('Function:'));
+  const r3 = analyze(buildTestHtml({ summary: 'Marketing operations leader who loves systems.', bullets: ['Improved processes.'] }), { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
+  check('no scale signals fails', !r3.pass && r3.fails[0].startsWith('Scale:'));
+  const r4 = analyze(buildTestHtml({ summary: 'Marketing operations leader who governs MCP connectors on Netlify with a $20M budget, reporting to the CMO.' }), { jdTitle: 'Director of Marketing Operations', cvText: cv, config });
+  check('two unlifted jargon terms in the summary fails', !r4.pass && r4.fails[0].startsWith('Jargon:'));
+  const r5 = analyze(good, { jdTitle: 'VP Marketing Operations', cvText: cv, config });
+  check('two-level jump warns but passes', r5.pass && r5.warnings.some((w) => w.startsWith('Level:')));
+  console.log(`recruiter-read-check self-test: ${passed} passed, ${failed} failed`);
+  return failed ? 1 : 0;
+}
+
+// ── CLI ─────────────────────────────────────────────────────────────────────
+function usage() {
+  return `Usage: node recruiter-read-check.mjs <generated-cv.html> [--jd <jd.md|.txt>] [--title "JD title"] [--cv cv.md] [--config config/recruiter-read.yml] [--json]
+       node recruiter-read-check.mjs --self-test
+
+Would a recruiter skimming the top third of page one see a person at this level,
+in this function, at this scale? Fails on function mismatch, missing scale signals,
+or jargon in the summary; warns on a two-level jump. Exit 0 pass, 1 fail, 2 usage.`;
+}
+
+function printHuman(result, file) {
+  console.log(`Recruiter-read check: ${file}`);
+  console.log(`Top block: "${result.regions.summaryFirstSentence}"`);
+  const list = (tag, items) => items.forEach((m) => console.log(`  [${tag}] ${m}`));
+  if (result.fails.length) { console.log('\nFails:'); list('fail', result.fails); }
+  if (result.warnings.length) { console.log('\nWarnings:'); list('warning', result.warnings); }
+  if (result.info.length) { console.log('\nInfo:'); list('info', result.info); }
+  console.log(`\nRecruiter-read check ${result.pass ? 'passed' : 'failed'}: ${file}`);
+}
+
+/** Parse argv and run. Returns the process exit code. */
+export function runCli(args = process.argv.slice(2)) {
+  if (args.includes('--self-test')) return runSelfTest();
+  if (args.includes('--help') || args.includes('-h')) { console.log(usage()); return 0; }
+  const opts = { jd: null, title: null, cv: DEFAULT_CV_PATH, config: DEFAULT_CONFIG_PATH, json: false };
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    const takesValue = { '--jd': 'jd', '--title': 'title', '--cv': 'cv', '--config': 'config' }[a];
+    if (takesValue) {
+      const v = args[i + 1];
+      if (v == null || v.startsWith('--')) { console.error(`ERROR: ${a} requires a value\n${usage()}`); return 2; }
+      opts[takesValue] = v;
+      i++;
+    } else if (a === '--json') {
+      opts.json = true;
+    } else if (a.startsWith('--')) {
+      console.error(`ERROR: unknown flag ${a}\n${usage()}`);
+      return 2;
+    } else {
+      positional.push(a);
+    }
+  }
+  if (positional.length !== 1) { console.error(usage()); return 2; }
+  const resolve = (p) => (isAbsolute(p) ? p : join(process.cwd(), p));
+  const htmlPath = resolve(positional[0]);
+  if (!existsSync(htmlPath)) { console.error(`ERROR: file not found: ${htmlPath}`); return 2; }
+  let config;
+  try { config = loadConfig(resolve(opts.config)); } catch (e) { console.error(`ERROR: ${e.message}`); return 2; }
+  let jdText = '';
+  if (opts.jd) {
+    const jdPath = resolve(opts.jd);
+    if (!existsSync(jdPath)) { console.error(`ERROR: JD file not found: ${jdPath}`); return 2; }
+    jdText = readFileSync(jdPath, 'utf-8');
+  }
+  const cvPath = resolve(opts.cv);
+  const cvText = existsSync(cvPath) ? readFileSync(cvPath, 'utf-8') : '';
+  const result = analyze(readFileSync(htmlPath, 'utf-8'), { jdText, jdTitle: opts.title || '', cvText, config });
+  if (opts.json) console.log(JSON.stringify(result, null, 2));
+  else printHuman(result, positional[0]);
+  return result.pass ? 0 : 1;
+}
+
+if (isMainModule(import.meta.url)) {
+  // exitCode, not exit(): lets buffered stdout drain (same reason as verify-ats.mjs).
+  process.exitCode = runCli();
+}
