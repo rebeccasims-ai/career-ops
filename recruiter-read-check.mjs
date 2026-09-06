@@ -20,10 +20,14 @@ import { dirname, isAbsolute, join } from 'path';
 import { fileURLToPath } from 'url';
 import * as yaml from 'js-yaml';
 import { isMainModule } from './lib/is-main-module.mjs';
+import { getCareerOpsRoot } from './path-resolver.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+// DEFAULT_CONFIG_PATH stays on the codebase ROOT: config/recruiter-read.yml is a
+// repo-relative declaration in config/local-paths.txt, not user data. DEFAULT_CV_PATH
+// is user-layer data (per the Data Contract) and must resolve from the data root.
 export const DEFAULT_CONFIG_PATH = join(ROOT, 'config', 'recruiter-read.yml');
-export const DEFAULT_CV_PATH = join(ROOT, 'cv.md');
+export const DEFAULT_CV_PATH = join(getCareerOpsRoot(), 'cv.md');
 
 // ── HTML → text ─────────────────────────────────────────────────────────────
 const ENTITIES = { '&amp;': '&', '&#39;': "'", '&quot;': '"', '&nbsp;': ' ', '&lt;': '<', '&gt;': '>' };

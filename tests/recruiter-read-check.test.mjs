@@ -138,3 +138,21 @@ try {
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
+
+console.log('\nrecruiter-read-check.mjs — DEFAULT_CV_PATH resolves from the data root');
+
+const dir2 = mkdtempSync(join(tmpdir(), 'rrc-root-'));
+try {
+  writeFileSync(join(dir2, 'cv.md'), '### Director, Test · Acme · Remote · Jan 2020 – Dec 2022\n');
+  const goodPath2 = join(dir2, 'good.html');
+  writeFileSync(goodPath2, good);
+  const rootRun = spawnSync(process.execPath, [script, goodPath2, '--title', 'VP Marketing Operations', '--json'], {
+    env: { ...process.env, CAREER_OPS_ROOT: dir2 },
+    encoding: 'utf-8',
+  });
+  let rootParsed = null;
+  try { rootParsed = JSON.parse(rootRun.stdout); } catch { /* handled below */ }
+  if (rootParsed && rootParsed.checks.level.candidateTitle === 'Director, Test') pass('CLI without --cv resolves cv.md from CAREER_OPS_ROOT, not the codebase root'); else fail(`root run: status ${rootRun.status}\n${rootRun.stdout}${rootRun.stderr}`);
+} finally {
+  rmSync(dir2, { recursive: true, force: true });
+}
